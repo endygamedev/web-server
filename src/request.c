@@ -2,20 +2,54 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/sendfile.h>
 
 #include "request.h"
 
-#define WEBSITE_FOLDER "/home/egor/Code/C/web-server/tests/"
 
-
-void send_response(int sockfd, char *filename)
+int file_exists(char *path)
 {
-    char path[BUFSIZ];
-    long length;
+    struct stat s = {0};
+    return !(stat(path, &s));
+}
+
+
+void parse_request(char **path, char *buffer)
+{
+    char *request = strtok(buffer, "\n");
+    char *path_request = strtok(request, " ");
+    path_request = strtok(NULL, " ");
     
-    strcpy(path, WEBSITE_FOLDER);
-    strcat(path, filename);
+    if (!strcmp(path_request, "/")) {
+        char filename[BUFSIZ];
+        strcpy(filename, "/index.html");
+        strcat(*path, filename);
+    } else {
+        strcat(*path, path_request);
+    }
+}
+
+
+char *mime_type(char *extension)
+{
+    if (!(strcmp(extension, "html"))) {
+        return "text/html";
+    } else if (!(strcmp(extension, "css"))) {
+        return "text/css";
+    } else if (!(strcmp(extension, "ico"))) {
+        return "image/x-icon";
+    } else {
+        return "";
+    }
+}
+
+
+void send_response(int sockfd, char *path)
+{
+    long length;
     FILE *file = fopen(path, "r");
 
     if (!file) {
@@ -35,19 +69,28 @@ void send_response(int sockfd, char *filename)
     
     fclose(file);
     
-    char *iter = strtok(filename, ".");
+    char *iter = strtok(path, ".");
     char *token = iter;
 
     while ((iter = strtok(NULL, ".")) != NULL) {
         token = iter;
     }
-    
-    char *response = malloc(length + BUFSIZ);
-    strcpy(response, "HTTP/1.1 200 OK\nX-Content-Type-Options: nosniff\nContent-Type: text/");
-    strcat(response, token);
-    strcat(response, "\n\n");
-    strcat(response, content);
-    printf("%s\n\n", response);
-    fflush(stdout);
-    write(sockfd, response, strlen(response));
+
+    char *type = malloc(BUFSIZ);
+    type = mime_type(token);
+
+    if (!strcmp(type, "image/x-icon")) {
+        strcat(path, ".ico");
+        int fdicon = open(path, O_RDONLY);
+        sendfile(sockfd, fdicon, NULL, BUFSIZ);
+        close(fdicon);
+    } else {
+        char *response = malloc(length + BUFSIZ);
+        strcpy(response, "HTTP/1.1 200 OK\nConnection: close\nContent-Type: ");
+        strcat(response, type);
+        strcat(response, "\n\n");
+        strcat(response, content);
+        write(sockfd, response, strlen(response));
+        free(response);
+    }
 }

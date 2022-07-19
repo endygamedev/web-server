@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
+#include <fcntl.h>
+#include <sys/sendfile.h>
 
 #include "server.h"
 #include "request.h"
@@ -57,20 +58,26 @@ void launch(struct server serv)
     }
     
     while (1) {
-        struct dirent *dir;
-        DIR *website = opendir(WEBSITE_FOLDER);
+        char *path = malloc(BUFSIZ);
+        strcpy(path, WEBSITE_FOLDER);
         int accept_sockfd = accept(serv.socket, (struct sockaddr*)&serv.addr,
                                    (socklen_t *)&address_length);
         read(accept_sockfd, buffer, BUFSIZ);
         fprintf(logfile, "%s\n", buffer);
-        while ((dir = readdir(website)) != NULL) {
-            if (dir->d_type == DT_REG) {
-                send_response(accept_sockfd, dir->d_name);
-            }
+        
+        parse_request(&path, buffer);
+
+        if (file_exists(path)) {
+            send_response(accept_sockfd, path);
+        } else {
+            strcpy(path, WEBSITE_FOLDER);
+            strcat(path, "/404.html");
+            send_response(accept_sockfd, path);
         }
+
+        free(path);
         close(accept_sockfd);
         fflush(logfile);
-        closedir(website);
     }
 
     fclose(logfile);
