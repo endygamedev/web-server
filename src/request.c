@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/sendfile.h>
 
 #include "request.h"
@@ -82,7 +83,9 @@ void send_response(int sockfd, char *path)
     if (!strcmp(type, "image/x-icon")) {
         strcat(path, ".ico");
         int fdicon = open(path, O_RDONLY);
-        sendfile(sockfd, fdicon, NULL, BUFSIZ);
+        struct stat buffer;
+        stat(path, &buffer);
+        sendfile(sockfd, fdicon, NULL, buffer.st_size);
         close(fdicon);
     } else {
         char *response = malloc(length + BUFSIZ);
