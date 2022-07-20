@@ -39,7 +39,7 @@ struct server server_init(int domain, int type, int protocol, unsigned int inter
         fprintf(stderr, "Error: Listen failed\n");
         exit(EXIT_FAILURE);
     } else {
-        fprintf(stdout, "Server is listening...\n\n");
+        fprintf(stdout, "Server is running: http://127.0.0.1:%d\n\n", port);
     }
 
     return serv;
