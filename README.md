@@ -8,7 +8,11 @@ $ cd src
 $ make
 ```
 
-## Usage:
+## Usage
 ```
 $ ./src/main -p <port> -b <backlog>
 ```
+
+
+## License
+`web-server` is licensed under the [GPL-3.0 license ](./LICENSE).
