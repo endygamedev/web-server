@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+#include <dirent.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -11,6 +13,10 @@
 #include "request.h"
 
 
+/*
+ * Checks if file exists or not.
+ * Returns 1 if exists, 0 otherwise.
+ * */
 int file_exists(char *path)
 {
     struct stat s = {0};
@@ -18,15 +24,56 @@ int file_exists(char *path)
 }
 
 
+/*
+ * Checks if client requests sub-folder.
+ * Returns 1 if client requests sub-folder, 0 otherwise.
+ * */
+int is_folder(char *path, char *path_request)
+{
+    DIR *dir = opendir(path);
+    struct dirent *entry = readdir(dir);
+    int folder_flag = 0;
+
+    char request[BUFSIZ];
+    char dname[BUFSIZ];
+    strcpy(request, path_request);
+
+    while (entry != NULL) {
+        if (entry->d_type == DT_DIR) {
+            strcpy(dname, "/");
+            strcat(dname, entry->d_name);
+            if (!strcmp(dname, request)) {
+                folder_flag = 1;
+                break;
+            }
+        }
+        entry = readdir(dir);
+    }
+
+    closedir(dir);
+
+    return folder_flag;
+}
+
+
+/*
+ * Parse client's request.
+ * */
 void parse_request(char **path, char *buffer)
 {
     char *request = strtok(buffer, "\n");
     char *path_request = strtok(request, " ");
     path_request = strtok(NULL, " ");
+    int folder_flag = is_folder(*path, path_request);
     
     if (!strcmp(path_request, "/")) {
         char filename[BUFSIZ];
         strcpy(filename, "/index.html");
+        strcat(*path, filename);
+    } else if (folder_flag) {
+        char filename[BUFSIZ];
+        strcpy(filename, path_request);
+        strcat(filename, "/index.html");
         strcat(*path, filename);
     } else {
         strcat(*path, path_request);
@@ -34,6 +81,9 @@ void parse_request(char **path, char *buffer)
 }
 
 
+/*
+ * Returns correct mime type by extension.
+ * */
 char *mime_type(char *extension)
 {
     if (!(strcmp(extension, "html"))) {
@@ -48,6 +98,9 @@ char *mime_type(char *extension)
 }
 
 
+/*
+ * Send response to client.
+ * */
 void send_response(int sockfd, char *path)
 {
     long length;

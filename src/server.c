@@ -2,17 +2,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/ip.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+
+#include <sys/socket.h>
+#include <netinet/ip.h>
 
 #include "server.h"
 #include "request.h"
 
-#define WEBSITE_FOLDER "/home/egor/Code/C/web-server/tests"
+#define WEBSITE_FOLDER "/home/egor/code/c/web-server/tests"
 
 
+/*
+ * Initialize server strcuture.
+ * */
 struct server server_init(int domain, int type, int protocol, unsigned int interface,
                           int port, int backlog)
 {
@@ -46,6 +50,9 @@ struct server server_init(int domain, int type, int protocol, unsigned int inter
 }
 
 
+/*
+ * Launch server and write logs into log file.
+ * */
 void launch(struct server serv)
 {
     char buffer[BUFSIZ];
@@ -64,7 +71,7 @@ void launch(struct server serv)
                                    (socklen_t *)&address_length);
         read(accept_sockfd, buffer, BUFSIZ);
         fprintf(logfile, "%s\n", buffer);
-        
+         
         parse_request(&path, buffer);
 
         if (file_exists(path)) {

@@ -13,7 +13,6 @@ server: $(REQUEST).c
 request:
 	$(CC) $(REQUEST).c -o $(REQUEST) $(CC_FLAGS)
 
-
 clean:
 	rm -f main
 	rm -f $(SERVER)
